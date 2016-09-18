@@ -8,9 +8,10 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
-	mgo "gopkg.in/mgo.v2"
+	"github.com/gorilla/mux"
+	"github.com/remotejob/docker-goreverseproxy/handlers"
+	"github.com/remotejob/kaukotyoeu/handlers/robots"
 	// _ "github.com/remotejob/godocker/statik"
 )
 
@@ -47,46 +48,17 @@ func init() {
 
 }
 
-func testhandler(w http.ResponseWriter, r *http.Request) {
-
-	log.Println("testhandler 2")
-
-	mongoDBDialInfo := &mgo.DialInfo{
-		Addrs:     []string{"mymongo-controller"},
-		Timeout:   60 * time.Second,
-		Database:  "admin",
-		Username:  mongodbuser,
-		Password:  mongodbpass,
-		Mechanism: "SCRAM-SHA-1",
-	}
-
-	session, err := mgo.DialWithInfo(mongoDBDialInfo)
-
-	defer session.Close()
-
-	session.SetMode(mgo.Monotonic, true)
-
-	c := session.DB("node-mongo-employee").C("employees")
-
-	result := []Employees{}
-	err = c.Find(nil).All(&result)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for _, empl := range result {
-		fmt.Fprintf(w, "Hi  %s %s", empl.Name, empl.Title)
-	}
-
-}
-
 func main() {
 	// statikFS, err := fs.New()
 	// if err != nil {
 	// 	log.Fatalf(err.Error())
 	// }
-
-	http.HandleFunc("/test", testhandler)
+	r := mux.NewRouter()
+	r.HandleFunc("/robots.txt", robots.Generate)
+	r.HandleFunc("/sitemap.xml", handlers.CheckServeSitemap)
+	r.HandleFunc("/job/{locale}/{themes}", handlers.CreateArticelePage)
+	r.HandleFunc("/job/{locale}/{themes}/{mtitle}.html", handlers.CreateArticelePage)
+	log.Fatal(http.ListenAndServe(":8080", r))
 
 	// // fs := http.FileServer(http.Dir("/home/juno/neonworkspace/gowork/src/github.com/remotejob/godocker/assets"))
 	// fs := http.FileServer(http.Dir("assets"))
@@ -94,5 +66,5 @@ func main() {
 	// http.Handle("/assets/", http.StripPrefix("/assets/", fs))
 	// // http.Handle("/assets", http.FileServer(http.Dir("/home/juno/neonworkspace/gowork/src/github.com/remotejob/godocker/assets")))
 	// http.Handle("/", http.FileServer(statikFS))
-	http.ListenAndServe(":8080", nil)
+	// http.ListenAndServe(":8080", nil)
 }
